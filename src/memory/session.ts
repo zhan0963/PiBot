@@ -27,10 +27,12 @@ export class SessionManager {
       return this.sessions.get(sessionId)!;
     }
 
-    // Try to load from disk
+    // Try to load from disk (keep the saved model, only use default as fallback)
     const existingSession = await this.storage.loadSession(sessionId);
     if (existingSession) {
-      existingSession.model = model;
+      if (!existingSession.model) {
+        existingSession.model = model;
+      }
       this.sessions.set(sessionId, existingSession);
       return existingSession;
     }
@@ -90,9 +92,13 @@ export class SessionManager {
     model: string
   ): Promise<void> {
     const sessionId = this.generateSessionId(userId, channelId);
-    const session = this.sessions.get(sessionId);
-    if (session) {
-      session.model = model;
+    let session = this.sessions.get(sessionId);
+
+    if (!session) {
+      // Load from disk or create a new session so the model switch persists
+      session = await this.getOrCreateSession(userId, channelId, model);
     }
+
+    session.model = model;
   }
 }

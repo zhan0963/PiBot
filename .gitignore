@@ -23,6 +23,9 @@ build/
 .vscode/
 .idea/
 
+# Session data (created at runtime)
+data/sessions/*.jsonl
+
 # Logs
 npm-debug.log*
 yarn-debug.log*
