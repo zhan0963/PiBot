@@ -5,6 +5,7 @@ import { AnthropicClient } from './llm/anthropic.js';
 import { OllamaClient } from './llm/ollama.js';
 import { LLMRouter } from './llm/router.js';
 import { DiscordBot } from './discord/bot.js';
+import { registerOllamaModels } from './config/models.js';
 
 async function main() {
   console.log('🤖 Starting PiBot...');
@@ -38,7 +39,8 @@ async function main() {
     const available = await ollamaClient.isAvailable();
     if (available) {
       const models = await ollamaClient.listModels();
-      console.log(`✅ Ollama client initialized (${config.ollama.baseUrl}) — ${models.length} model(s) available`);
+      registerOllamaModels(models);
+      console.log(`✅ Ollama client initialized (${config.ollama.baseUrl}) — ${models.length} model(s): ${models.join(', ')}`);
     } else {
       console.warn(`⚠️  Ollama enabled but not reachable at ${config.ollama.baseUrl}`);
     }

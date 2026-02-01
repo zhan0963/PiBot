@@ -39,62 +39,41 @@ export const AVAILABLE_MODELS: ModelConfig[] = [
     contextWindow: 200000,
   },
 
-  // --- Ollama models (common defaults) ---
-  {
-    id: 'llama3.2',
-    name: 'Llama 3.2',
-    provider: 'ollama',
-    maxTokens: 4096,
-    contextWindow: 128000,
-  },
-  {
-    id: 'llama3.1',
-    name: 'Llama 3.1',
-    provider: 'ollama',
-    maxTokens: 4096,
-    contextWindow: 128000,
-  },
-  {
-    id: 'qwen2.5',
-    name: 'Qwen 2.5',
-    provider: 'ollama',
-    maxTokens: 4096,
-    contextWindow: 32000,
-  },
-  {
-    id: 'deepseek-r1',
-    name: 'DeepSeek R1',
-    provider: 'ollama',
-    maxTokens: 4096,
-    contextWindow: 64000,
-  },
-  {
-    id: 'mistral',
-    name: 'Mistral',
-    provider: 'ollama',
-    maxTokens: 4096,
-    contextWindow: 32000,
-  },
-  {
-    id: 'gemma2',
-    name: 'Gemma 2',
-    provider: 'ollama',
-    maxTokens: 4096,
-    contextWindow: 8192,
-  },
-  {
-    id: 'phi3',
-    name: 'Phi-3',
-    provider: 'ollama',
-    maxTokens: 4096,
-    contextWindow: 128000,
-  },
 ];
 
+// Dynamic Ollama models discovered at runtime
+const ollamaModels: ModelConfig[] = [];
+
+function allModels(): ModelConfig[] {
+  return [...AVAILABLE_MODELS, ...ollamaModels];
+}
+
 export function getModelById(id: string): ModelConfig | undefined {
-  return AVAILABLE_MODELS.find(m => m.id === id);
+  return allModels().find(m => m.id === id);
 }
 
 export function getModelsByProvider(provider: LLMProvider): ModelConfig[] {
-  return AVAILABLE_MODELS.filter(m => m.provider === provider);
+  return allModels().filter(m => m.provider === provider);
+}
+
+/**
+ * Register Ollama models discovered at runtime from the local Ollama instance.
+ * Called once at startup after querying Ollama's /api/tags endpoint.
+ */
+export function registerOllamaModels(modelNames: string[]): void {
+  // Clear previous dynamic models
+  ollamaModels.length = 0;
+
+  for (const name of modelNames) {
+    // Skip if already in the static list
+    if (AVAILABLE_MODELS.some(m => m.id === name)) continue;
+
+    ollamaModels.push({
+      id: name,
+      name: name,
+      provider: 'ollama',
+      maxTokens: 4096,
+      contextWindow: 128000, // conservative default
+    });
+  }
 }
