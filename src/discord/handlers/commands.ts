@@ -1,6 +1,6 @@
 import { Message as DiscordMessage } from 'discord.js';
 import { SessionManager } from '../../memory/session.js';
-import { AVAILABLE_MODELS, getModelById } from '../../config/models.js';
+import { AVAILABLE_MODELS, getModelsByProvider, LLMProvider } from '../../config/models.js';
 
 // Use '!' prefix to avoid conflicts with Discord's native slash commands
 const COMMAND_PREFIX = '!';
@@ -68,25 +68,45 @@ export class CommandHandler {
     );
 
     if (!model) {
-      await message.reply(`❌ Model not found. Use \`${COMMAND_PREFIX}models\` to see available models.`);
+      // Could be a custom Ollama model not in our registry — allow it anyway
+      const userId = message.author.id;
+      const channelId = message.channel.isDMBased() ? undefined : message.channel.id;
+
+      await this.sessionManager.updateSessionModel(userId, channelId, modelId);
+      await message.reply(`✅ Model switched to: \`${modelId}\` (custom — will route to Ollama)`);
       return;
     }
 
     const userId = message.author.id;
     const channelId = message.channel.isDMBased() ? undefined : message.channel.id;
 
-    // Update the session model
     await this.sessionManager.updateSessionModel(userId, channelId, model.id);
 
-    await message.reply(`✅ Model switched to: **${model.name}** (\`${model.id}\`)`);
+    const providerLabel = model.provider === 'anthropic' ? '☁️ Anthropic' : '🏠 Ollama';
+    await message.reply(`✅ Model switched to: **${model.name}** (\`${model.id}\`) — ${providerLabel}`);
   }
 
   private async handleModels(message: DiscordMessage): Promise<void> {
-    const modelList = AVAILABLE_MODELS.map(m =>
-      `• **${m.name}** (\`${m.id}\`)\n  Context: ${m.contextWindow.toLocaleString()} tokens | Max output: ${m.maxTokens.toLocaleString()} tokens`
-    ).join('\n\n');
+    const providers: { key: LLMProvider; label: string; emoji: string }[] = [
+      { key: 'anthropic', label: 'Anthropic (Cloud)', emoji: '☁️' },
+      { key: 'ollama', label: 'Ollama (Local)', emoji: '🏠' },
+    ];
 
-    await message.reply(`**Available Models:**\n\n${modelList}`);
+    let output = '**Available Models:**\n';
+
+    for (const provider of providers) {
+      const models = getModelsByProvider(provider.key);
+      if (models.length === 0) continue;
+
+      output += `\n${provider.emoji} **${provider.label}**\n`;
+      for (const m of models) {
+        output += `• **${m.name}** (\`${m.id}\`)\n  Context: ${m.contextWindow.toLocaleString()} tokens | Max output: ${m.maxTokens.toLocaleString()} tokens\n`;
+      }
+    }
+
+    output += `\n💡 *Tip: You can also use any Ollama model by name, e.g. \`${COMMAND_PREFIX}model codellama\`*`;
+
+    await message.reply(output);
   }
 
   private async handleHelp(message: DiscordMessage): Promise<void> {
@@ -95,13 +115,17 @@ export class CommandHandler {
 
 \`${COMMAND_PREFIX}help\` — Show this help message
 \`${COMMAND_PREFIX}clear\` — Clear conversation history
-\`${COMMAND_PREFIX}model <id>\` — Switch AI model
+\`${COMMAND_PREFIX}model <id>\` — Switch AI model (supports Anthropic & Ollama)
 \`${COMMAND_PREFIX}models\` — List available models
 
 **Usage:**
 • Mention me (@PiBot) in a channel to chat
 • DM me directly for private conversations
 • I remember our conversation history!
+
+**Providers:**
+☁️ Anthropic (Claude) — Cloud-based AI
+🏠 Ollama — Local models on your machine
     `.trim();
 
     await message.reply(helpText);
