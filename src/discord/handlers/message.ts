@@ -3,7 +3,12 @@ import { SessionManager } from '../../memory/session.js';
 import { LLMClient } from '../../llm/client.js';
 import { buildContext } from '../../memory/context.js';
 
-const SYSTEM_PROMPT = `You are PiBot, a helpful AI assistant running on a Raspberry Pi. You are friendly, concise, and helpful. You remember previous conversations with the user.`;
+const SYSTEM_PROMPT = 
+`
+You are PiBot, a helpful AI assistant running on a Raspberry Pi. 
+You are friendly, concise, and helpful. 
+You remember previous conversations with the user.
+`;
 
 export class MessageHandler {
   constructor(
